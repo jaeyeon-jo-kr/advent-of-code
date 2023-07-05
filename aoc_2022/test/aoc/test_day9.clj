@@ -2,10 +2,13 @@
   (:require [aoc.day9 :refer :all]
             [clojure.test :refer :all]))
 
+
+
 (deftest initial-position-test
   (testing "initial position test"
     (is (= initial [0 0]))
-    (is (= initial-position 
+    (is (= (-> initial-status
+               (select-keys [:H :T]))
            {:H [0 0] :T [0 0]}))))
 
 (deftest touched-test
@@ -18,12 +21,15 @@
 
 (deftest move-header-test
   (testing "If the head is ever two steps directly up, down, left, or right from the tail, the tail must also move one step in that direction so it remains close enough:"
-    (is (= (tail-step {:H [-5 0]
-                       :T [-3 0]})
+    (is (= (-> (tail-step {:H [-5 0]
+                           :T [-3 0]})
+               (select-keys [:H :T]))
            {:H [-5 0]
             :T [-4 0]}))
-    (is (= (tail-step {:H [0 -5]
-                       :T [0 0]})
+    (is (= (-> (tail-step {:H [0 -5]
+                           :T [0 0]})
+               (select-keys [:H :T])
+               )
            {:H [0 -5]
             :T [0 -1]}))))
 
@@ -58,9 +64,9 @@
            {:H [-1 0]
             :T [0 0]}))))
 
-(deftest multi-step-test
+(deftest steps-test
   (testing "multi step test"
-    (is (= (multi-step
+    (is (= (steps
             {:H [0 0]
              :T [0 0]}
             [:L 1])
@@ -81,7 +87,7 @@ H.....  (H covers T, s)
 ......
 s..TH.
 "
-    (is (= (multi-step
+    (is (= (steps
             {:H [0 0]
              :T [0 0]}
             [:R 4])
@@ -99,7 +105,7 @@ s..TH.
 ......
 ......
 s....." 
-    (is (= (multi-step
+    (is (= (steps
             {:H [4 0]
              :T [3 0]}
             [:U 4])
@@ -119,7 +125,7 @@ s.....
 ......
 s.....
 "
-    (is (= (multi-step
+    (is (= (steps
             {:H [4 4]
              :T [4 3]}
             [:L 3])
@@ -139,7 +145,7 @@ s.....
 ......
 s.....
 "
-    (is (= (multi-step
+    (is (= (steps
             {:H [1 4]
              :T [2 4]}
             [:D 1])
@@ -159,7 +165,7 @@ s.....
 ......
 s.....
 "
-    (is (= (multi-step
+    (is (= (steps
             {:H [1 3]
              :T [2 4]}
             [:R 4])
@@ -179,7 +185,7 @@ s.....
 ......
 s.....
 "
-    (is (= (multi-step
+    (is (= (steps
             {:H [5 3]
              :T [4 3]}
             [:D 1])
@@ -198,7 +204,7 @@ HT....
 ......
 s.....
 "
-    (is (= (multi-step
+    (is (= (steps
             {:H [5 2]
              :T [4 3]}
             [:L 5])
@@ -216,7 +222,7 @@ s.....
 .TH...
 ......
 s....."
-    (is (= (multi-step
+    (is (= (steps
             {:H [0 2]
              :T [1 2]}
             [:R 2])
@@ -227,7 +233,8 @@ s....."
   (testing "solve example"
     (is (= (-> "R 4\nU 4\nL 3\nD 1\nR 4\nD 1\nL 5\nR 2"
                tail-visited
-               second
+               :visited
+               keys
                count)
            13)))
   (testing "testing visited
@@ -241,14 +248,14 @@ s###..
     (is 
      (= (-> "R 4\nU 4\nL 3\nD 1\nR 4\nD 1\nL 5\nR 2"
             tail-visited
-            second)
-       #{[4 3] [2 2] [1 0] [2 3] [3 3] [3 4] [4 2] [3 0] [4 1] [2 4] [2 0] [1 2] [3 2]} ))))
-
+            )
+       #{[4 3] [2 2] [1 0] [2 3] [3 3] [3 4] [4 2] [3 0] [4 1] [2 4] [
 (deftest solve-part1
   (-> (slurp "./day9_input.txt")
       tail-visited
-      second
-      count))
+      :visited
+      count
+      ))
 
 
 
