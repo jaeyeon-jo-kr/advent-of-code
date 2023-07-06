@@ -5,11 +5,11 @@
 (def X 0)
 (def Y 1)
 (def initial [0 0])
+(def tail-visited (atom #{}))
 
 (def initial-status 
   {:H initial
-   :T initial
-   :visited {[0 0] 1}})
+   :T initial})
 
 (defn touched? 
   [{[hx hy] :H
@@ -21,16 +21,22 @@
 (defn next-tail-position
   [{[hx hy] :H
     [tx ty] :T}]
-  [(if-not (= hx tx)
-     (-> (- hx tx)
-         (/ (abs (- hx tx)))
-         (+ tx))
-     tx)
-   (if-not (= hy ty)
-     (-> (- hy ty)
-         (/ (abs (- hy ty)))
-         (+ ty))
-     ty)])
+  (let [distance [(- hx tx) (- hy ty)]
+        [dx dy] (case distance
+              [2 1] [1 1]
+              [2 0] [1 0]
+              [2 -1] [1 -1]
+              [1 2] [1 1]
+              [1 -2] [1 -1]
+              [0 2] [0 1]
+              [0 -2] [0 -1]
+              [-1 2] [-1 1]
+              [-1 -2] [-1 -1]
+              [-2 -1] [-1 -1]
+              [-2 0] [-1 0]
+              [-2 1] [-1 1]
+              [0 0])]
+    [(+ tx dx) (+ ty dy)]))
 
 
 (defn tail-step
@@ -38,10 +44,10 @@
   (if (touched? status)
     status
     (let [[tx ty] (next-tail-position status)]
+      (swap! tail-visited #(conj % [tx ty]))
       (-> status
           (assoc-in [:T 0] tx)
-          (assoc-in [:T 1] ty)
-          (update-in [:visited [tx ty]] (fnil inc 0))))))
+          (assoc-in [:T 1] ty)))))
 
 (defn head-step
   [status direct]
@@ -63,13 +69,6 @@
       tail-step
       (doto (-> (dissoc :visited)
                 println))))
-
-(comment
-  (doto 1
-    (println))
-
-  )
-
 (defn steps
   [status [direct step-count]]
   (->> (iterate (partial step direct) status)
@@ -81,7 +80,7 @@
   (->> (str/split-lines input)
        (map parse-line)))
 
-(defn tail-visited
+(defn solve-all
   [input]
   (->> input
        read-path
@@ -117,30 +116,108 @@
          (interpose "\r\n")
          (reduce str))))
 
+(def visited-2 (atom #{}))
 
-(comment
-  (vec '(1 2 3))
+(def initial-status-2
+  (repeat 10 initial))
+
+(def move-map
+  {:D [Y dec]
+   :U [Y inc]
+   :L [X dec]
+   :R [X inc]})
+
+(defn head-step-2
+  [head direct]
+  (let [[axis mod-fn] (direct move-map)]
+    (update head axis mod-fn)))
+
+(defn next-tail-position-2
+  [[hx hy] [tx ty]]
+  (let [distance [(- hx tx) (- hy ty)]
+        [dx dy] (case distance
+                  [2 1] [1 1]
+                  [2 0] [1 0]
+                  [2 -1] [1 -1]
+                  [2 2] [1 1]
+                  [2 -2] [1 -1]
+                  [1 2] [1 1]
+                  [1 -2] [1 -1]
+                  [0 2] [0 1]
+                  [0 -2] [0 -1]
+                  [-1 2] [-1 1]
+                  [-1 -2] [-1 -1]
+                  [-2 -1] [-1 -1]
+                  [-2 0] [-1 0]
+                  [-2 1] [-1 1]
+                  [-2 -2] [-1 -1]
+                  [-2 2] [-1 1]
+                  [0 0])]
+    [(+ tx dx) (+ ty dy)]))
+
+(defn tail-step-2
+  [tail prev] 
+  (let [[tx ty] (next-tail-position-2 prev tail)]
+    (-> tail
+        (assoc X tx)
+        (assoc Y ty))))
+
+(defn step-2
+  [direct status]
+  (let [head (first status)
+        tails (next status)]
+    (->> (reduce (fn [prev-tails tail]
+                   (when (= 9 (count prev-tails))
+                     (swap! visited-2 #(conj % tail)))
+                   (-> tail 
+                       (tail-step-2 (first prev-tails))
+                       (cons prev-tails)))
+                 [(head-step-2 head direct)] tails)
+         reverse)))
+
+(defn steps-2
+  [status [direct step-count]]
+  (->> (iterate (partial step-2 direct) status)
+       (take (inc step-count))
+       last))
+
+(defn solve-all-2
+  [input]
+  (reset! visited-2 #{})
+  (->> input
+       read-path
+       (reduce steps-2 initial-status-2)))
+
+
+(comment 
+  (do 
+    (reset! visited-2 #{})
+    (->> (read-path "R 5\nU 8\nL 8\nD 3\nR 17\nD 10\nL 25\nU 20")
+         (reduce steps-2 initial-status-2))
+    (->> @visited-2
+         count)
+    
+    )
   
-  (-> "R 4\nU 4\nL 3\nD 1\nR 4\nD 1\nL 5\nR 2"
-      tail-visited
-      :visited
-      keys
-      print-point
-      println-str
-      )
-  
+
+  (do 
+    (reset! visited-2 #{})
+    (->> '([:R 4] [:U 4] [:L 3] [:D 1] [:R 4] [:D 1] [:L 5] [:R 2])
+         (reduce steps-2 initial-status-2))
+    (->> @visited-2)
+    
+    )
   (-> (slurp "./day9_input.txt")
-      tail-visited
-      :visited
-      keys
-      print-point
-      println-str) 
-  
-
+      solve-all-2)
+  (step-2 :U initial-status-2)
+  (steps-2 initial-status-2 [:U 11])
   (->> (slurp "./day9_input.txt")
-      read-path
+       read-path
        (take 10))
-  (-> (slurp "./day9_input.txt")
-      tail-visited 
-      )
-)
+  (do
+    (-> (slurp "./day9_input.txt")
+        solve-all-2)
+    (-> @visited-2
+        count))
+
+  )

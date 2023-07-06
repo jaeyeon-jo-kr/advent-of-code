@@ -229,35 +229,6 @@ s....."
            {:H [2 2]
             :T [1 2]}))))
 
-(deftest solve-example1-test
-  (testing "solve example"
-    (is (= (-> "R 4\nU 4\nL 3\nD 1\nR 4\nD 1\nL 5\nR 2"
-               tail-visited
-               :visited
-               keys
-               count)
-           13)))
-  (testing "testing visited
-..##..
-...##.
-.####.
-....#.
-s###..
-"(comment 
-   #{[4 3] [2 2] [1 0] [2 3] [3 3] [3 4] [4 2] [3 0] [4 1] [2 4] [2 0] [1 2] [3 2]})
-    (is 
-     (= (-> "R 4\nU 4\nL 3\nD 1\nR 4\nD 1\nL 5\nR 2"
-            tail-visited
-            )
-       #{[4 3] [2 2] [1 0] [2 3] [3 3] [3 4] [4 2] [3 0] [4 1] [2 4] [
-(deftest solve-part1
-  (-> (slurp "./day9_input.txt")
-      tail-visited
-      :visited
-      count
-      ))
-
-
 
   
   
