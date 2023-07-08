@@ -1,18 +1,31 @@
 (ns aoc.day11 
   (:require [clojure.string :as s]))
 
-(def inspect-time (atom []))
+(def inspect
+  (atom {:round 0
+         :inspect []}))
+
+(defn reset-inspect! []
+  (swap! inspect {:round 0 :inspect []}))
+
+(defn update-inpect-time!
+  [monkey-number]
+  (swap! inspect #(update-in  % [:inspect monkey-number] (fnil inc 0))))
+
+(defn update-round!
+  []
+  (swap! inspect #(update % :round inc)))
 
 (defn register-starting-items
   [item content]
   (assoc item :items 
           (->> (s/split content #",")
-               (map read-string)
+               (map (comp biginteger read-string))
                vec)))
 
 (defn create-fn
   [left oper right]
-  (println "print create-fn" left oper right)
+  #_(println "print create-fn" left oper right)
   (->> ["(fn [old] (" oper " " left " " right "))"]
        (apply str)
        read-string
@@ -72,60 +85,71 @@
     (let [last-num (dec (count monkeys))]
       (update monkeys last-num property name content))))
 
+(defn set-monkey-reduce-division
+  [monkeys]
+  (let [reduce-div
+        (->> monkeys
+             (map :division)
+             (apply *))]
+    (mapv #(assoc % :reduce-div reduce-div) monkeys)))
 
 (defn parse
   [contents]
   (->> contents
        (s/split-lines)
        (map (comp #(s/split % #":") s/trim))
-       (reduce register-monkey (vector))))
+       (reduce register-monkey (vector))
+       set-monkey-reduce-division))
 
 (defn increase-worry
   [item oper-fn] 
   (-> (oper-fn item)
-      (doto (->> (println "\tWorry level is to ")))))
+    #_  (doto (->> (println "\tWorry level is to ")))))
 
 (defn decrease-worry
-  [item]
-  (-> (quot item 3)
+  [item reduce-div]
+  (-> (mod item reduce-div)
       (doto (->> 
-             (println "\tMonkey gets bored with item."
+           #_  (println "\tMonkey gets bored with item."
                       "Worry level is divided by " 3 " to ")))))
 
 (defn pass-to-monkey
   [item {:keys [if-true if-false division]}] 
   (if (zero? (rem item division))
     (do 
-      (println "\tCurrent worry level is divisible by " division)
-      (println "\tItem with worry level "
+   #_   (println "\tCurrent worry level is divisible by " division)
+    #_  (println "\tItem with worry level "
                item
                " is thrown to monkey " if-true ".")
       if-true)
     (do 
-      (println "\tCurrent worry level is not divisible by " division)
-      (println "\tItem with worry level "
+      #_(println "\tCurrent worry level is not divisible by " division)
+      #_(println "\tItem with worry level "
                item
                " is thrown to monkey " if-false ".")
       if-false)))
 
+
 (defn inspect-monkey
   [monkey]
   (if-let [item (peek (:items monkey))]
-    (do (println "Monkey inspects an item with a worry level of " item)
-        (let [worried (-> item
-                          (increase-worry (:oper-fn monkey))
-                          (decrease-worry))]
+    (do 
+      (update-inpect-time! (:number monkey))
+   #_   (println "Monkey inspects an item with a worry level of " item)
+      (let [worried (-> item
+                        (increase-worry (:oper-fn monkey))
+                        (decrease-worry (:reduce-div monkey))
+                        )]
 
-          (-> monkey
-              (update :pass
-                      #(conj % [(pass-to-monkey worried monkey) worried]))
-              (update :items pop)
-              inspect-monkey)))
+        (-> monkey
+            (update :pass
+                    #(conj % [(pass-to-monkey worried monkey) worried]))
+            (update :items pop)
+            inspect-monkey)))
     monkey))
 
 (defn pass-items
-  [monkeys [pass-to item]]
-  
+  [monkeys [pass-to item]] 
   (update-in monkeys
              [pass-to :items]
              #(conj % item)))
@@ -140,15 +164,54 @@
   [monkeys]
   (->> (range 0 (count monkeys))
        (reduce (fn [monkeys i]
-                 (println "\nMonkey " i ":")
+           #_      (println "\nMonkey " i ":")
                  (->> (update monkeys i inspect-monkey)
                       ((juxt identity #(nth % i)))
                       (apply pass-all-items))) monkeys)))
 
+(defn play-round-20
+  [monkeys]
+  (reset-inspect!)
+  (->> (iterate play-round monkeys)
+       (take 21)))
+
+(defn play-round-10000
+  [monkeys]
+  (reset-inspect!)
+  (->> (range 10000)
+       (reduce (fn [monkeys round]
+                 (println "round : " round)
+                 (play-round monkeys))
+               monkeys)))
+
 (comment 
+  (BigInteger. 100)
+  
   (-> (slurp "day11_sample.txt")
       parse
       play-round)
+  (-> (slurp "day11_sample.txt")
+      parse
+      play-round-20)
+  (-> (slurp "day11_input.txt")
+      parse
+      play-round-20)
+  (-> (slurp "day11_input.txt")
+      parse
+      play-round-10000)
+  (-> (slurp "day11_sample.txt")
+      parse
+      play-round-10000)
+  (-> (slurp "day11_input.txt")
+      parse
+      play-round-10000)
+  (->> @inspect
+       :inspect
+       vals
+       (sort >)
+       (take 2)
+       (apply *))
+  
   (mapcat :list [{:list ["b" "a" "c"]}
                  {:list ["b" "a" "c"]}])
   
