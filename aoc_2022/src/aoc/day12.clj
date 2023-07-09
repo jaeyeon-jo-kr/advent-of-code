@@ -1,4 +1,4 @@
-(ns aoc.day12 
+(ns aoc.day12
   (:require [clojure.string :as str]))
 
 (def start \S)
@@ -10,7 +10,7 @@
   (->> (str/trim line)
        (map-indexed
         (fn [x signal]
-          {:x x 
+          {:x x
            :signal signal
            :eval
            (case signal
@@ -18,7 +18,7 @@
              \E (int \z)
              (int signal))}))))
 
-(def directions 
+(def directions
   [{:dx 1 :dy 0 :dir \>}
    {:dx -1 :dy 0 :dir \<}
    {:dx 0 :dy 1 :dir \v}
@@ -50,7 +50,7 @@
                       (keep (fn [{:keys [dx dy dir]}]
                               (let [tx (+ x dx)
                                     ty (+ y dy)
-                                    next-node (find-node tx ty nodes)] 
+                                    next-node (find-node tx ty nodes)]
                                 (when (and (stepable? node next-node)
                                            (not (end-node? node))
                                            (not (begin-node? next-node)))
@@ -78,19 +78,27 @@
   (-> (filter #(#{\S} (:signal %)) nodes)
       first))
 
-
 (defn initialize
   [text]
-  (as-> {:steps 0
-         :visited []} s
+  (as-> {} s
     (assoc s :nodes (init-nodes text))
-    (assoc s :edges (init-edges (:nodes s)))
-    (assoc s :current (init-current-node (:nodes s)))))
+    (assoc s :edges (init-edges (:nodes s)))))
+
+(defn remove-edges-by-visited
+  [visited edges] 
+  (for [{tx :tx ty :ty :as edge} edges
+        {x :x y :y} visited
+        :when (not= [tx ty] [x y])]
+    edge))
+
+
 
 (defn find-next-edges
-  [{x :x y :y :as _node} edges]
+  [{x :x y :y :as _node} edges visited]
   (->> edges
        (filter (comp #{[x y]} (juxt :x :y)))
+       (remove-edges-by-visited visited)
+       distinct
        seq))
 
 (defn target-node
@@ -99,40 +107,78 @@
        (filter (comp #{[x y]} (juxt :x :y)))
        first))
 
-(defn remove-visited-edge
-  [edges {x :x y :y}]
-  (remove (comp #{[x y]} (juxt :tx :ty)) edges))
 
-(defn find-minimal-step
-  [status]
-  (let [node (:current status)
-        nodes (:nodes status)]
-    (if (end-node? node)
-      (assoc status :found true)
-      (if-let [next-edges (find-next-edges node (:edges status))]
+(defn next-step-fn
+  [nodes edges]
+  (fn [{min-step :min-step
+        work-queue :work-queue :as work-status}]
+    (let [{visited :visited
+           steps :steps
+           current :current :as status}
+          (peek work-queue)
+
+          visited (conj visited current)
+          status (assoc status :visited visited)
+
+          next-edges
+          (seq (find-next-edges current edges visited))
+          
+          work-queue (update work-status :work-queue pop)]
+      (println "current : " current)
+      (println "work queue conut : " (count work-queue))
+      (cond
+        (nil? status)
+        min-step
+
+        (end-node? current)
+        (-> work-status
+            (update  :min-step #(min steps %))
+            )
+        
+
+        (nil? next-edges)
+        work-status
+
+        :else
         (->> next-edges
              (map (fn [edge]
                     (-> status
                         (assoc :current (target-node edge nodes))
-                        (update :steps inc)
-                        (update :edges #(remove-visited-edge % node))
-                        find-minimal-step)))
-             (filter :found)
-             (sort-by :steps)
-             first)
-        (assoc status :found false)))))
+                        (update :steps inc))))
+             (apply conj work-queue)
+             (assoc work-status :work-queue))))))
 
-(comment 
-    (->> (initialize "SabcdefghijklmnopqrstuvwxyzE")
+(comment
+  (mapcat identity [[1 2] [2 3] [2]])
+
+  (conj #{1 2} 3)
+  (let [{:keys [nodes edges]}
+        (initialize "SabcdefghijklmnopqrstuvwxyzE")
+        init-status {:visited []
+                     :current (init-current-node nodes)
+                     :steps 0}
+        work-status {:min-step 0
+                     :work-queue [init-status]}
+        next-step (next-step-fn nodes edges)]
+    (->  (next-step work-status)
+         next-step
+         next-step
          
+         next-step
+         next-step
+         next-step
          )
-
-  (->>(initialize "Sabqponm
+    )
+  
+  (->> (initialize "Sabqponm
       abcryxxl
       accszExk
       acctuvwj
       abdefghi")
-   find-minimal-step)
+       find-minimal-step)
+  (->> (slurp "day12_sample.txt")
+       initialize
+       find-minimal-step)
   )
 
 
