@@ -1,184 +1,147 @@
 (ns aoc.day12
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.string :as s]))
 
-(def start \S)
-(def end \E)
+(def file "day12_sample.txt")
 
+(defn read-content
+  [texts]
+  (->> (str/split-lines texts)
+       (mapv vec)))
 
-(defn parse-line
-  [line]
-  (->> (str/trim line)
-       (map-indexed
-        (fn [x signal]
-          {:x x
-           :signal signal
-           :eval
-           (case signal
-             \S (int \a)
-             \E (int \z)
-             (int signal))}))))
+(comment 
+  (vector '(1 2 3)))
 
-(def directions
-  [{:dx 1 :dy 0 :dir \>}
-   {:dx -1 :dy 0 :dir \<}
-   {:dx 0 :dy 1 :dir \v}
-   {:dx 0 :dy -1 :dir \^}])
+(defn find-start
+  [routes]
+  (let [find-col
+        (fn [x val] (when (= \S val) x))
+        find-row
+        (fn [y row]
+          (when-first [x (keep-indexed find-col row)]
+            [x y]))]
+    (first (keep-indexed find-row routes))))
 
+(defn in-routes?
+  [routes x y]
+  (and (<= 0 y (dec (count routes)))
+       (<= 0 x (dec (count (first routes))))))
 
-(defn stepable?
-  [{curr-eval :eval} {next-eval :eval}]
-  (when (and curr-eval next-eval)
-    (<= (dec next-eval) curr-eval next-eval)))
-
-(defn find-node
-  [x y nodes]
-  (some #(when (= [x y] ((juxt :x :y) %)) %) nodes))
-
-(defn end-node?
-  [{:keys [signal] :as _node}]
-  (= signal \E))
-
-(defn begin-node?
-  [{:keys [signal] :as _node}]
-  (= signal \S))
-
-(defn init-edges
-  [nodes]
-  (->> nodes
-       (mapcat (fn [{:keys [x y] :as node}]
-                 (->> directions
-                      (keep (fn [{:keys [dx dy dir]}]
-                              (let [tx (+ x dx)
-                                    ty (+ y dy)
-                                    next-node (find-node tx ty nodes)]
-                                (when (and (stepable? node next-node)
-                                           (not (end-node? node))
-                                           (not (begin-node? next-node)))
-                                  (assoc {}
-                                         :x x
-                                         :y y
-                                         :tx tx
-                                         :ty ty
-                                         :dir dir))))))))))
-
-(defn init-nodes
-  [text]
-  (->> text
-       (str/split-lines)
-       (map-indexed
-        (fn [y line]
-          (->> (parse-line line)
-               (map #(assoc % :y y)))))
-       flatten))
-
-
-
-(defn init-current-node
-  [nodes]
-  (-> (filter #(#{\S} (:signal %)) nodes)
-      first))
-
-(defn initialize
-  [text]
-  (as-> {} s
-    (assoc s :nodes (init-nodes text))
-    (assoc s :edges (init-edges (:nodes s)))))
-
-(defn remove-edges-by-visited
-  [visited edges] 
-  (for [{tx :tx ty :ty :as edge} edges
-        {x :x y :y} visited
-        :when (not= [tx ty] [x y])]
-    edge))
-
-
-
-(defn find-next-edges
-  [{x :x y :y :as _node} edges visited]
-  (->> edges
-       (filter (comp #{[x y]} (juxt :x :y)))
-       (remove-edges-by-visited visited)
-       distinct
-       seq))
-
-(defn target-node
-  [{x :tx y :ty :as _edge} nodes]
-  (->> nodes
-       (filter (comp #{[x y]} (juxt :x :y)))
-       first))
-
-
-(defn next-step-fn
-  [nodes edges]
-  (fn [{min-step :min-step
-        work-queue :work-queue :as work-status}]
-    (let [{visited :visited
-           steps :steps
-           current :current :as status}
-          (peek work-queue)
-
-          visited (conj visited current)
-          status (assoc status :visited visited)
-
-          next-edges
-          (seq (find-next-edges current edges visited))
-          
-          work-queue (update work-status :work-queue pop)]
-      (println "current : " current)
-      (println "work queue conut : " (count work-queue))
-      (cond
-        (nil? status)
-        min-step
-
-        (end-node? current)
-        (-> work-status
-            (update  :min-step #(min steps %))
-            )
-        
-
-        (nil? next-edges)
-        work-status
-
-        :else
-        (->> next-edges
-             (map (fn [edge]
-                    (-> status
-                        (assoc :current (target-node edge nodes))
-                        (update :steps inc))))
-             (apply conj work-queue)
-             (assoc work-status :work-queue))))))
-
-(comment
-  (mapcat identity [[1 2] [2 3] [2]])
-
-  (conj #{1 2} 3)
-  (let [{:keys [nodes edges]}
-        (initialize "SabcdefghijklmnopqrstuvwxyzE")
-        init-status {:visited []
-                     :current (init-current-node nodes)
-                     :steps 0}
-        work-status {:min-step 0
-                     :work-queue [init-status]}
-        next-step (next-step-fn nodes edges)]
-    (->  (next-step work-status)
-         next-step
-         next-step
-         
-         next-step
-         next-step
-         next-step
-         )
-    )
-  
-  (->> (initialize "Sabqponm
-      abcryxxl
-      accszExk
-      acctuvwj
-      abdefghi")
-       find-minimal-step)
-  (->> (slurp "day12_sample.txt")
-       initialize
-       find-minimal-step)
+(comment 
+  (in-routes?
+   [[0 0] [1 1]] 1 1)
+(count  [[0 0] [1 1]])
   )
+
+(defn height
+  [s]
+  (int  (case s \E \z \S \a s)))
+
+(defn steppable?
+  [current next]
+  (<= (dec (height next)) (height current) (height next)))
+
+(defn remove-visited
+  [visited neighbours]
+  (->> neighbours
+       ((fn [d] (println "remove-visited before :" d) d))
+       (remove (fn [[x y]]
+                 (some (comp #{[x y]} (juxt first second)) visited)))
+       ((fn [d] (println "remove-visited after :" d) d))))
+
+
+(defn neighbours
+  [routes x y]
+  (->> [[1 0] [-1 0] [0 1] [0 -1]]
+       (map (fn [[dx dy]] [(+ x dx) (+ y dy)]))
+       #_((fn [d] (println "in-routes before :" routes d) d))
+       (filter (fn [[nx ny]] (in-routes? routes nx ny)))
+       #_((fn [d] (println "in-routes after :" d) d))
+       (filter (fn [[nx ny]] (steppable?
+                              (get-in routes [y x])
+                              (get-in routes [ny nx]))))
+       #_((fn [d] (println "steppable after :" d) d))))
+
+
+(defn update-distance
+  [distances x y next-dist]
+  (update-in distances [y x]
+          (fn [dist]
+            (min dist next-dist))))
+
+(defn init-distance
+  [routes [x y :as _start]]
+  (-> (mapv (fn [row] (mapv (constantly Integer/MAX_VALUE) row)) routes)
+      (assoc-in [y x] 0)))
+
+
+(defn solve
+  [[queue routes distances]]
+  (if-let [{[x y] :node
+            visited :visited} (peek queue)]
+    (if-let [neighbours
+             (->> (neighbours routes x y)
+                  (remove-visited visited)
+                  seq)]
+      [(apply conj (pop queue) 
+              (->> neighbours
+                   (map #(assoc {} 
+                                :node %
+                                :visited (conj visited [x y])))))
+       routes
+
+       (->> neighbours
+            (reduce
+             (fn [distances [nx ny]]
+               (println "neighbor : " nx ny)
+               (println "distance : " (get-in distances [y x]))
+               (update-distance
+                distances nx ny
+                (-> distances 
+                    (get-in [y x])
+                    inc)))
+             distances))]
+      [(pop queue) routes distances])
+    [queue routes distances]))
+
+
+(comment 
+  (def example "Sabqponm
+abcryxxl
+accszExk
+acctuvwj
+abdefghi")
+  (def routes (read-content example))
+  (def queue [{:node (find-start routes)
+               :visited []}]) 
+  (def distances (init-distance routes (find-start routes)) )
+
+  [[\S \a \b \q \p \o \n \m] 
+   [\a \b \c \r \y \x \x \l]
+   [\a \c \c \s \z \E \x \k]
+   [\a \c \c \t \u \v \w \j]
+   [\a \b \d \e \f \g \h \i]]
+  [[0 1 2 21 20 19 18 17] 
+   [1 2 9 22 31 30 29 16]
+   [2 7 8 23 32 33 28 15]
+   [3 6 7 24 25 26 27 14]
+   [4 5 8 9 10 11 12 13]]
+
+  (->> (iterate solve [queue routes distances])
+       (take 100)
+       last)
+  
+       
+       (solve [queue routes  distances])
+       
+       
+
+       (pop [1])
+       (steppable? 1 0)
+       (-> (slurp file)
+           read-content
+           find-start)
+       )
+
 
 
