@@ -43,14 +43,38 @@
                          (inc i))))
        (reduce +)))
 
+(defn solve-part2
+  [example]
+  (->> (str/split example #"\n\n")
+       (map (comp #(map read-string %)
+                  str/split-lines))
+       (mapcat (juxt first second))
+       (cons [[2]])
+       (cons [[6]])
+       (sort (comp {:left -1
+                    :same 0
+                    :right 1} compare-list))
+       (keep-indexed (fn [i coll]
+                       (when (#{[[2]] [[6]]} coll)
+                         (inc i))))
+       (reduce *)))
+
 (comment
+  
+
   (solve-part1 (slurp "./day13_input.txt"))
+  (solve-part2 (slurp "./day13_input.txt"))
+  (slurp "./day13_input.txt")
+
+  
   (sequential? '())
   (next [1 2 3])
   (list* [1 2 3])
-  (compare-list '(1,1,3,1,1)
-                '(1,1,5,1,1))
-
+  (#{:right}
+   (compare-list '(1,1,3,1,1)
+                 '(1,1,5,1,1))
+)
+  
   (def example "[1,1,3,1,1]
 [1,1,5,1,1]
 
