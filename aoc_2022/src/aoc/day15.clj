@@ -105,26 +105,16 @@ Consult the report from the sensors you just deployed. In the row where y=200000
    ")
 
 ;;Sensor at x=8, y=7: closest beacon is at x=2, y=10
-(def sample
-  {:sensor [8 7]
-   :closest [2 10]})
 
 (defn radius
   [sx sy cx cy]
   (+ (abs (- cx sx))
      (abs (- cy sy))))
 
-(comment 
-  (radius 10 2 3 4))
-
 (defn remain-x
   [radius y-move]
   (when (<= y-move radius)
     (- radius y-move)))
-
-(comment
-  (remain-x 10 0))
-
 
 (defn y-move 
   [sy y]
@@ -133,8 +123,7 @@ Consult the report from the sensors you just deployed. In the row where y=200000
 
 (defn excluded-x-line
   [sx sy cx cy y]
-  (when-let [x (remain-x (radius sx sy cx cy)
-                       (y-move sy y))]
+  (when-let [x (remain-x (radius sx sy cx cy) (y-move sy y))]
     [(- sx x) (+ sx x)]))
 
 (defn exclude-beacon
@@ -173,35 +162,10 @@ Consult the report from the sensors you just deployed. In the row where y=200000
             (conj lines new-line)))
         [])))
 
-(comment 
-  (count [0 1])
-  (sort-by first 
-           '([10412 2750293] [-9867 10410] [1366733 1984817] [1889069 3367619] [-10379 10410] [2535371 3715829] [10412 32751] [3445903 4253073] [3082762 4908902]))
-  (dedupe-all-lines 
-   '([10412 2750293] [-9867 10410] [1366733 1984817] [1889069 3367619] [-10379 10410] [2535371 3715829] [10412 32751] [3445903 4253073] [3082762 4908902]))
-  (dedupe-lines [[1 5] [3 8] [ 7 9]])
-  (dedupe '(1 2 8 3 4 5 8 8))
-  (->> (mapcat #(exclude-beacon 1 %) [[-10 10] [0 5]])
-       (mapcat #(exclude-beacon 2 %)))
-  (exclude-beacons [1 2 3 4]
-                   [[-10 10] [0 5]])
-  
-  (exclude-beacons []
-                   [[-10 10] [0 5]])
-  
-  
-  )
 
 (defn beacon-x-list
   [sensor-info y]
   (keep (fn [[_ _ bx by]] (when (= y by) bx)) sensor-info))
-
-(comment 
-  (mapcat 
-  (fn [coll]
-    (mapcat (fn [_] [1 2 3]) [[1 2 3] [1 2 3]]))
-   [[1 1]])
-  )
 
 (defn parse-line
   "parse line such as 
@@ -224,11 +188,6 @@ Consult the report from the sensors you just deployed. In the row where y=200000
   (apply +
          (map (fn [[a b]] (inc (- b a))) lines)))
 
-(comment 
-  (distance-of-lines [[-2 1]])
-  (distance-of-lines [[3 24]])
-  )
-
 (defn solve-file
   [filename y]
   (let [sensor-info (parse-sensor-info (slurp filename))
@@ -240,59 +199,95 @@ Consult the report from the sensors you just deployed. In the row where y=200000
         deduped
         (dedupe-all-lines excluded-beacons)]
     (println deduped)
-    (distance-of-lines deduped)))
+    (distance-of-lines deduped)))  
 
-(comment 
-  (solve-file "day15_input.txt" 2000000)
-  (solve-file "day15_sample.txt" 10)
+(defn line-sub
+  [[x1-min x1-max] [x2-min x2-max]]
+  (cond
+    (<= x1-min x2-min x1-max x2-max)
+    [[x1-min (dec x2-min)]]
 
-  (def sensor-info 
-    (parse-sensor-info
-     (slurp "day15_input.txt")))
-  (def x-lines (find-excluded-x-lines
-                sensor-info 2000000)) 
-  
-  
-  (def excluded-beacons 
-    (exclude-beacons (beacon-x-list sensor-info 2000000) x-lines))
-  
-  (def deduped (dedupe-all-lines excluded-beacons))
+    (<= x2-min x1-min x2-max x1-max)
+    [[(inc x2-max) x1-max]]
 
-  (def sum (distance-of-lines deduped))
+    (<= x1-min x2-min x2-max x1-max)
+    [[x1-min (dec x2-min)] [(inc x2-max) x1-max]]))
+
+(defn all-scanned-lines
+  [sensor-info y]
+  (dedupe-all-lines
+   (find-excluded-x-lines sensor-info y)))
+
+(defn find-tuning-frequency
+  [sensor-info]
+  (->> (map #(all-scanned-lines sensor-info %) (range 0 1000))
+       (map-indexed (fn [i sequence]
+                      [i sequence]))
+       (filter (fn [[_ lines]]
+                 (and (= 2 (count lines))
+                      (= (- (first (second lines))
+                            (second (first lines))) 2))))))
+
+
+
+(comment
+
+  (dedupe-all-lines
+   (find-excluded-x-lines sensor-info 10))
+
+  (dedupe-all-lines
+   (find-excluded-x-lines sensor-info 12))
 
 
   (def sensor-info
-    (parse-sensor-info
-     (slurp "day15_sample.txt")))
-  (def x-lines (find-excluded-x-lines
-                sensor-info 10))
+    (parse-sensor-info (slurp "day15_sample.txt")))
   
-  
-  (def excluded-beacons
-    (exclude-beacons (beacon-x-list sensor-info 2000000) x-lines))
-  
-  (def deduped (dedupe-all-lines excluded-beacons))
-  
-  (def sum (distance-of-lines deduped))
-  
-  
-  
-  (parse-line "Sensor at x=3844106, y=3888618: closest beacon is at x=3225436, y=4052707")
-  (mapcat (fn [a] (if (> a 2) [a] a)) [1 2 3 4 5])
-  (excluded-x-line 10 12 11 11 1)
-  (remain-x 2 2)
-  (radius 0 0 0 2)
+  (find-tuning-frequency sensor-info)
+
+  (def sensor-info-15 (parse-sensor-info (slurp "day15_input.txt")))
+
+  (find-tuning-frequency sensor-info-15)
+
+  (all-scanned-lines sensor-info 10)
+  (all-scanned-lines sensor-info 8)
+
+  (dedupe-all-lines (find-excluded-x-lines sensor-info 0))
+  (dedupe-all-lines (find-excluded-x-lines sensor-info 1))
+  (dedupe-all-lines (find-excluded-x-lines sensor-info 2))
+  (dedupe-all-lines (find-excluded-x-lines sensor-info 3))
+  (dedupe-all-lines (find-excluded-x-lines sensor-info 4))
+  (dedupe-all-lines (find-excluded-x-lines sensor-info 5))
+  (dedupe-all-lines (find-excluded-x-lines sensor-info 6))
+  (dedupe-all-lines (find-excluded-x-lines sensor-info 11))
+
+  (line-sub [0 50] [1 2])
+
+  (dedupe-all-lines (find-excluded-x-lines sensor-info 1))
+
+  (dedupe-all-lines line)
+  (quot (radius 0 0 0 2) 2)
   (excluded-x-line 0 0 0 2 0)
-  (excluded-x-line 0 0 0 2 1)
-  (excluded-x-line 0 0 0 2 2)
+  (out-of-x-line 0 0 0 2 0)
+  (out-of-x-line 0 0 0 2 -1)
+  (out-of-x-line 0 0 0 2 -2)
 
-  (excluded-x-line 0 0 2 0 0)
-  (excluded-x-line 0 0 2 0 1)
-  (excluded-x-line 0 0 2 0 2)
-  (excluded-x-line 0 0 2 0 3)
 
-  (exclude-beacon 1 [1 2])
-  
 
+  (count [0 1])
+  (sort-by first
+           '([10412 2750293] [-9867 10410] [1366733 1984817] [1889069 3367619] [-10379 10410] [2535371 3715829] [10412 32751] [3445903 4253073] [3082762 4908902]))
+  (dedupe-all-lines
+   '([10412 2750293] [-9867 10410] [1366733 1984817] [1889069 3367619] [-10379 10410] [2535371 3715829] [10412 32751] [3445903 4253073] [3082762 4908902]))
+  (dedupe-lines [[1 5] [3 8] [7 9]])
+  (dedupe '(1 2 8 3 4 5 8 8))
+  (->> (mapcat #(exclude-beacon 1 %) [[-10 10] [0 5]])
+       (mapcat #(exclude-beacon 2 %)))
+  (exclude-beacons [1 2 3 4]
+                   [[-10 10] [0 5]])
+
+  (exclude-beacons []
+                   [[-10 10] [0 5]])
   )
+
+
 
