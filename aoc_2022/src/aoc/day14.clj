@@ -3,6 +3,9 @@
 
 (def start [500 0])
 
+(def example "498,4 -> 498,6 -> 496,6
+503,4 -> 502,4 -> 502,9 -> 494,9")
+
 (defn debug
   ([r]
    (debug r identity))
@@ -47,16 +50,10 @@
      :y-max y-max}))
 
 (defn init-terrain-map
-  [{:keys [x-max y-max]}]
+  [x-max y-max]
   (->> (vec (repeat (inc x-max) "."))
        (repeat (inc y-max))
        vec))
-
-(comment 
-  (vec '(1))
-  (init-terrain-map {:x-max 3 :y-max 3})
-  )
-
 
 (defn line-point
   [a0 a1]
@@ -82,7 +79,66 @@
                ((juxt rest butlast))
                (apply map (fn [p0 p1] [p0 p1]))
                (reduce draw-points t-map)))]
-    (-> (reduce drow-rock-path terrain-map rock-paths))))
+    (reduce drow-rock-path terrain-map rock-paths)))
+
+
+
+(defn next-move-pos
+  [[x y] [l m r]]
+  (cond 
+    (= m \.) 
+    [x (inc y)]
+
+    (= l \.)
+    [(dec x) (inc y)]
+
+    (= r \.)
+    [(inc x) (inc y)]
+    
+    :else [x y]))
+
+(defn in-bounds?
+  [[x y] terrain-map]
+  (let [ terrain-map])
+  (and (<= 0 x max-x)
+       (<= 0 y max-y)))
+
+
+
+(defn stopped?
+  [[x0 y0] [x1 y1]]
+  (= [x0 y0] [x1 y1]))
+
+#_(defn step
+  [[x y] terrain-map]
+  (let [next-pos ((comp #(next-move-pos [x y] %)
+                        #(subvec % (dec x) (inc x))
+                        #(nth % y))
+                  terrain-map)]
+    (stopped? )
+    
+    
+    )
+  
+  
+  
+  
+  
+  )
+
+(comment 
+  (next-move-pos 
+   [1 2] [\. \# \.] )
+  (next-move-pos 
+   [1 2] [\. \. \.] )
+  
+  (defn explore 
+    (let []))
+  
+  
+
+  
+  )
 
 
 
