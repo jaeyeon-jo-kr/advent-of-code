@@ -262,15 +262,10 @@ Consult the report from the sensors you just deployed. In the row where y=200000
 
   (line-sub [0 50] [1 2])
 
-  (dedupe-all-lines (find-excluded-x-lines sensor-info 1))
-
-  (dedupe-all-lines line)
+  (dedupe-all-lines (find-excluded-x-lines sensor-info 1)) 
   (quot (radius 0 0 0 2) 2)
   (excluded-x-line 0 0 0 2 0)
-  (out-of-x-line 0 0 0 2 0)
-  (out-of-x-line 0 0 0 2 -1)
-  (out-of-x-line 0 0 0 2 -2)
-
+  
 
 
   (count [0 1])
