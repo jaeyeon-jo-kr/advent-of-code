@@ -1,5 +1,3 @@
-
-
 from typing import List
 
 
@@ -39,4 +37,5 @@ class Solution:
 
 sol = Solution()    
 print(sol.findMedianSortedArrays([1,6], [3,7]))
+sol.findMedianSortedArrays([1,2,3],[4,5,6])
         
