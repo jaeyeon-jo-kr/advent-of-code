@@ -98,7 +98,7 @@ Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green")
           {:red 0 :blue 0 :green 0}
           cube-sets)
         vals
-        #_(reduce *)))
+        (reduce *)))
 
 (defn solve2
   [input]
